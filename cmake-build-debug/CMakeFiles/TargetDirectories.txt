@@ -1,3 +1,0 @@
-C:/Users/user/Documents/Other_Documents/C_projects/Cpaint/cmake-build-debug/CMakeFiles/CPaint.dir
-C:/Users/user/Documents/Other_Documents/C_projects/Cpaint/cmake-build-debug/CMakeFiles/edit_cache.dir
-C:/Users/user/Documents/Other_Documents/C_projects/Cpaint/cmake-build-debug/CMakeFiles/rebuild_cache.dir
