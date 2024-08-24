@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <GL/glut.h>
-// maths for sqrt
 #include <math.h>
 
 int windowWidth;
@@ -14,8 +13,7 @@ int colour = 0;
 
 void display() {
     glClear(GL_COLOR_BUFFER_BIT);
-    for (int n = 0; n < 4; n++)
-    {
+    for (int n = 0; n < 4; n++) {
         glColor3f(colours[n][0],colours[n][1],colours[n][2]); //
         glPointSize(5.0);
         glBegin(GL_POINTS);
@@ -29,14 +27,20 @@ void display() {
 
 void mouse(int button, int state, int x, int y) {
     if (button == GLUT_LEFT_BUTTON) {
+        float fx = (x - windowWidth / 2) / (windowWidth / 2.0);
+        float fy = (windowHeight / 2 - y) / (windowHeight / 2.0);
         if (state == GLUT_DOWN) {
             isDrawing = 1;
-            lastX = (x - windowWidth / 2) / (windowWidth / 2.0);
-            lastY = (windowHeight / 2 - y) / (windowHeight / 2.0);
+            lastX = fx;
+            lastY = fy;
         } else if (state == GLUT_UP) {
             isDrawing = 0;
+            points[colour][pointCount[colour]][0] = fx;
+            points[colour][pointCount[colour]][1] = fy;
+            pointCount[colour]++;
             lastX = -1;
             lastY = -1;
+            glutPostRedisplay();
         }
     }
 }
@@ -50,7 +54,7 @@ void motion(int x, int y) {
             float dx = fx - lastX;
             float dy = fy - lastY;
             float distance = sqrt(dx * dx + dy * dy);
-            int steps = (int)(distance * 200); // Number of intermediate points
+            int steps = (int)(distance * 400); // Number of intermediate points
 
             for (int i = 0; i <= steps; i++) {
                 float t = (float)i / (float)steps;
@@ -73,20 +77,16 @@ void keyboard(unsigned char key, int x, int y) {
         }
         glutPostRedisplay();
     }
-    else if (key == 119)
-    {
+    else if (key == 119) {
         colour = 0;
     }
-    else if (key == 114)
-    {
+    else if (key == 114) {
         colour = 1;
     }
-    else if (key == 103)
-    {
+    else if (key == 103) {
         colour = 2;
     }
-    else if (key == 98)
-    {
+    else if (key == 98) {
         colour = 3;
     }
 }
