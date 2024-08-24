@@ -4,20 +4,12 @@
 #include <stdio.h>
 #include <GL/glut.h>
 #include <math.h>
+#include "utils/array_utils.h"
 
 int windowWidth;
 int windowHeight;
 int isDrawing = 0;
 int colour = 0;
-
-// array struct describes list of points for each colour
-float white[10000][2];
-float red[10000][2];
-float green[10000][2];
-float blue[10000][2];
-
-// an array containing the 4 pointers to arrays of point colours
-float (*points[4])[2] = {white, red, green, blue};
 
 // block struct describes list of actions preformed being what colour and how many points added
 struct block {
@@ -32,6 +24,20 @@ int currentBlockPointCount = 0;
 int pointCount[4] = {0,0,0,0}; // 4 Array to store the number of points for each colour
 float lastX = -1, lastY = -1;
 float colours[4][3] = {{1.0, 1.0, 1.0},{1.0, 0.0, 0.0},{0.0, 1.0, 0.0},{0.0, 0.0, 1.0}};
+
+// Dynamically allocate the points array
+float ***points;
+
+void initializePointsArray(const int numColors,const int *pointCounts) {
+    points = malloc(numColors * sizeof(float **));
+    for (int i = 0; i < numColors; i++) {
+        points[i] = malloc(pointCounts[i] * sizeof(float *));
+        for (int j = 0; j < pointCounts[i]; j++) {
+            points[i][j] = malloc(2 * sizeof(float));
+        }
+    }
+}
+
 
 void display() {
     glClear(GL_COLOR_BUFFER_BIT);
@@ -143,12 +149,22 @@ void motion(const int x, const int y) {
 
 void keyboard(const unsigned char key, const int x, const int y) {
     if (key == 27) { // ASCII code for the ESC key
+        // free the memory 2d for blocks and for points
+        free2DArray(actionBlocks, blockCount);
+        printf("freeing points array\n");
+        freePointsArray(points, 4, pointCount);
+
         // clear all the points
         for (int i = 0; i < 4; i++) {
             pointCount[i] = 0;
         }
         blockCount = 0;
         currentBlockPointCount = 0;
+
+        // Reinitialize the points array
+        const int pointCounts[4] = {10000, 10000, 10000, 10000};
+        initializePointsArray(4, pointCounts);
+
         glutPostRedisplay();
     }
     // make a new block no matter what if changing colour
@@ -184,7 +200,14 @@ int main(int argc, char** argv) {
     glutMouseFunc(mouse); // Register the mouse callback function
     glutMotionFunc(motion); // Register the motion callback function
     glutKeyboardFunc(keyboard); // Register the keyboard callback function
+
+    int pointCounts[4] = {10000, 10000, 10000, 10000};
+    initializePointsArray(4, pointCounts);
+
     glutMainLoop();
+
+    // Free the points array before exiting
+    freePointsArray(points, 4, pointCounts);
     return 0;
 }
 
