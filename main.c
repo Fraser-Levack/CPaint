@@ -18,7 +18,7 @@ struct block {
 };
 
 // block array stores the actions preformed
-struct block actionBlocks[20000];
+struct block actionBlocks[40000];
 int blockCount = 0;
 int currentBlockPointCount = 0;
 int pointCount[4] = {0,0,0,0}; // 4 Array to store the number of points for each colour
@@ -149,8 +149,7 @@ void motion(const int x, const int y) {
 
 void keyboard(const unsigned char key, const int x, const int y) {
     if (key == 27) { // ASCII code for the ESC key
-        // free the memory 2d for blocks and for points
-        free2DArray(actionBlocks, blockCount);
+        // free the memory for points
         printf("freeing points array\n");
         freePointsArray(points, 4, pointCount);
 
@@ -162,7 +161,7 @@ void keyboard(const unsigned char key, const int x, const int y) {
         currentBlockPointCount = 0;
 
         // Reinitialize the points array
-        const int pointCounts[4] = {10000, 10000, 10000, 10000};
+        const int pointCounts[4] = {40000, 40000, 40000, 40000};
         initializePointsArray(4, pointCounts);
 
         glutPostRedisplay();
@@ -201,7 +200,7 @@ int main(int argc, char** argv) {
     glutMotionFunc(motion); // Register the motion callback function
     glutKeyboardFunc(keyboard); // Register the keyboard callback function
 
-    int pointCounts[4] = {10000, 10000, 10000, 10000};
+    int pointCounts[4] = {40000, 40000, 40000, 40000};
     initializePointsArray(4, pointCounts);
 
     glutMainLoop();
