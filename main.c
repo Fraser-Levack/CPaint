@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <GL/glut.h>
 #include <math.h>
+#include <windows.h>
 #include "utils/array_utils.h"
 
 int windowWidth;
@@ -22,6 +23,7 @@ struct block actionBlocks[40000];
 int blockCount = 0;
 int currentBlockPointCount = 0;
 int pointCount[4] = {0,0,0,0}; // 4 Array to store the number of points for each colour
+int positionInEachColour[4] = {0,0,0,0}; // used to store current position in each colour
 float lastX = -1, lastY = -1;
 float colours[4][3] = {{1.0, 1.0, 1.0},{1.0, 0.0, 0.0},{0.0, 1.0, 0.0},{0.0, 0.0, 1.0}};
 
@@ -41,40 +43,34 @@ void initializePointsArray(const int numColors,const int *pointCounts) {
 
 void display() {
     glClear(GL_COLOR_BUFFER_BIT);
-    // set the colour to the colour of the block
-    // set the pointCount to the pointCount of the block
 
-    int positionInEachColour[4] = {0,0,0,0}; // used to store current position in each colour
+    int positionInEachColour[4] = {0, 0, 0, 0}; // Reset at the beginning of display
+
     for (int n = 0; n < blockCount; n++) {
 
-        colour = actionBlocks[n].colour;// set the colour to the colour of the block
-        const int blockpointCount = actionBlocks[n].pointCount;// set the pointCount to the pointCount of the block
-        positionInEachColour[colour] += blockpointCount;// add the pointCount to the positionInEachColour array
+        colour = actionBlocks[n].colour;
+        const int blockpointCount = actionBlocks[n].pointCount;
+        positionInEachColour[colour] += blockpointCount; // Update position before drawing the next block
 
-        glColor3f(colours[colour][0],colours[colour][1],colours[colour][2]);
+        glColor3f(colours[colour][0], colours[colour][1], colours[colour][2]);
         glPointSize(5.0);
 
-        // loop through the corresponding array of points in the colour
-
         glBegin(GL_POINTS);
-        // from current position in the colour to the pointCount of the block
-        for (int i = positionInEachColour[colour]; i < positionInEachColour[colour] + blockpointCount; i++)
-        {
+        for (int i = positionInEachColour[colour]; i < positionInEachColour[colour] + blockpointCount - 1; i++) {
             glVertex2f(points[colour][i][0], points[colour][i][1]);
-
         }
-        glEnd();
-    }
-    glFlush(); // Ensure all commands are executed
 
-    for (int i = 0; i < 4; i++) {
-        positionInEachColour[i] = 0; // reset the positionInEachColour array for each
+        glEnd();
+        //printf("position in each colour: %d, %d, %d, %d\n", positionInEachColour[0], positionInEachColour[1], positionInEachColour[2], positionInEachColour[3]);
+
     }
+    glFlush();
+
 }
 
 void addActionBlock (const int colour, const int pointCount) {
     actionBlocks[blockCount].colour = colour;
-    actionBlocks[blockCount].pointCount = pointCount;
+    actionBlocks[blockCount].pointCount = pointCount - 1;
     blockCount++;
     //printf("Block %d: Colour %d, Points %d\n", blockCount, colour, pointCount);
     currentBlockPointCount = 0;
@@ -83,7 +79,7 @@ void addActionBlock (const int colour, const int pointCount) {
 void mouse(const int button,const int state,const int x,const int y) {
     if (button == GLUT_LEFT_BUTTON) {
 
-        if (currentBlockPointCount == 100) {
+        if (currentBlockPointCount > 80) {
             addActionBlock(colour, currentBlockPointCount);
         }
 
@@ -183,6 +179,19 @@ void keyboard(const unsigned char key, const int x, const int y) {
         colour = 3;
         addActionBlock(colour, currentBlockPointCount);
     }
+    // undo step using ctrl + z keys
+    else if (key == 26) {
+        if (blockCount > 0) {
+
+            pointCount[actionBlocks[blockCount].colour] -= actionBlocks[blockCount].pointCount;
+            blockCount--;
+            currentBlockPointCount = actionBlocks[blockCount].pointCount;
+
+            glutPostRedisplay();
+            Sleep(500); // Pause for 500 milliseconds to give the user time to release the key
+        }
+    }
+
 }
 
 
