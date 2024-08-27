@@ -1,6 +1,3 @@
-//
-// Created by fraser on 24/08/2024.
-//
 #include <stdio.h>
 #include <GL/glut.h>
 #include <math.h>
@@ -10,192 +7,161 @@
 int windowWidth;
 int windowHeight;
 int isDrawing = 0;
-int colour = 0;
+int colour = 0; // Initialize to a valid value
 
-// block struct describes list of actions preformed being what colour and how many points added
 struct block {
     int colour;
     int pointCount;
+    float **points;
+    struct block *nextBlock;
 };
 
-// block array stores the actions preformed
-struct block actionBlocks[40000];
-int blockCount = 0;
-int currentBlockPointCount = 0;
-int pointCount[4] = {0,0,0,0}; // 4 Array to store the number of points for each colour
-int positionInEachColour[4] = {0,0,0,0}; // used to store current position in each colour
-float lastX = -1, lastY = -1;
-float colours[4][3] = {{1.0, 1.0, 1.0},{1.0, 0.0, 0.0},{0.0, 1.0, 0.0},{0.0, 0.0, 1.0}};
+struct block *headBlock = NULL;
+struct block *currentBlock = NULL;
 
-// Dynamically allocate the points array
-float ***points;
+float colours[4][3] = {{1.0, 1.0, 1.0}, {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}};
 
-void initializePointsArray(const int numColors,const int *pointCounts) {
-    points = malloc(numColors * sizeof(float **));
-    for (int i = 0; i < numColors; i++) {
-        points[i] = malloc(pointCounts[i] * sizeof(float *));
-        for (int j = 0; j < pointCounts[i]; j++) {
-            points[i][j] = malloc(2 * sizeof(float));
-        }
+void addBlock(const int colour, const int pointCount, const float **points, struct block *currentBlock) {
+    struct block *newBlock = malloc(sizeof(struct block));
+    newBlock->colour = colour;
+    newBlock->pointCount = pointCount;
+    newBlock->points = malloc(pointCount * sizeof(float *));
+    for (int i = 0; i < pointCount; i++) {
+        newBlock->points[i] = malloc(2 * sizeof(float));
+        newBlock->points[i][0] = points[i][0];
+        newBlock->points[i][1] = points[i][1];
+    }
+    newBlock->nextBlock = NULL;
+    if (currentBlock != NULL) {
+        currentBlock->nextBlock = newBlock;
+    } else {
+        headBlock = newBlock;
     }
 }
 
+void removeMostRecentBlock() {
+    if (headBlock == NULL) {
+        return; // No blocks to remove
+    }
+
+    if (headBlock->nextBlock == NULL) {
+        // Only one block in the list
+        free2DArray(headBlock->points, headBlock->pointCount);
+        free(headBlock);
+        headBlock = NULL;
+        currentBlock = NULL;
+    } else {
+        // More than one block in the list
+        struct block *tempBlock = headBlock;
+        while (tempBlock->nextBlock->nextBlock != NULL) {
+            tempBlock = tempBlock->nextBlock;
+        }
+        free2DArray(tempBlock->nextBlock->points, tempBlock->nextBlock->pointCount);
+        free(tempBlock->nextBlock);
+        tempBlock->nextBlock = NULL;
+        currentBlock = tempBlock;
+    }
+}
+
+void freeAllBlocks(struct block *headBlock) {
+    struct block *tempBlock = headBlock;
+    while (tempBlock != NULL) {
+        struct block *nextBlock = tempBlock->nextBlock;
+        free2DArray(tempBlock->points, tempBlock->pointCount);
+        free(tempBlock);
+        tempBlock = nextBlock;
+    }
+    headBlock = NULL;
+    currentBlock = NULL;
+}
 
 void display() {
     glClear(GL_COLOR_BUFFER_BIT);
 
-    int positionInEachColour[4] = {0, 0, 0, 0}; // Reset at the beginning of display
+    struct block *tempBlock = headBlock;
+    while (tempBlock != NULL) {
+        int blockColour = tempBlock->colour;
+        if (blockColour < 0 || blockColour > 3) {
+            blockColour = 0; // Default to white if out of bounds
+        }
+        glColor3f(colours[blockColour][0], colours[blockColour][1], colours[blockColour][2]);
+        const int blockpointCount = tempBlock->pointCount;
 
-    for (int n = 0; n < blockCount; n++) {
-
-        colour = actionBlocks[n].colour;
-        const int blockpointCount = actionBlocks[n].pointCount;
-        positionInEachColour[colour] += blockpointCount; // Update position before drawing the next block
-
-        glColor3f(colours[colour][0], colours[colour][1], colours[colour][2]);
         glPointSize(5.0);
 
         glBegin(GL_POINTS);
-        for (int i = positionInEachColour[colour]; i < positionInEachColour[colour] + blockpointCount - 1; i++) {
-            glVertex2f(points[colour][i][0], points[colour][i][1]);
+        for (int i = 0; i < blockpointCount; i++) {
+            glVertex2f(tempBlock->points[i][0], tempBlock->points[i][1]);
         }
-
         glEnd();
-        //printf("position in each colour: %d, %d, %d, %d\n", positionInEachColour[0], positionInEachColour[1], positionInEachColour[2], positionInEachColour[3]);
-
+        tempBlock = tempBlock->nextBlock;
     }
     glFlush();
-
 }
 
-void addActionBlock (const int colour, const int pointCount) {
-    actionBlocks[blockCount].colour = colour;
-    actionBlocks[blockCount].pointCount = pointCount - 1;
-    blockCount++;
-    //printf("Block %d: Colour %d, Points %d\n", blockCount, colour, pointCount);
-    currentBlockPointCount = 0;
-}
-
-void mouse(const int button,const int state,const int x,const int y) {
-    if (button == GLUT_LEFT_BUTTON) {
-
-        if (currentBlockPointCount > 80) {
-            addActionBlock(colour, currentBlockPointCount);
-        }
-
-        const float fx = (x - windowWidth / 2) / (windowWidth / 2.0);
-        const float fy = (windowHeight / 2 - y) / (windowHeight / 2.0);
-        if (state == GLUT_DOWN) {
+void mouse(int button, int state, int x, int y) {
+    if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+        if (isDrawing == 0) {
             isDrawing = 1;
-            lastX = fx;
-            lastY = fy;
-        } else if (state == GLUT_UP) {
-            isDrawing = 0;
-            points[colour][pointCount[colour]][0] = fx;
-            points[colour][pointCount[colour]][1] = fy;
-            pointCount[colour]++;
-            currentBlockPointCount++;
-            lastX = -1;
-            lastY = -1;
-            glutPostRedisplay();
-        }
-    }
-}
-
-void motion(const int x, const int y) {
-    if (isDrawing)
-    {
-        const float fx = (x - windowWidth / 2) / (windowWidth / 2.0);
-        const float fy = (windowHeight / 2 - y) / (windowHeight / 2.0);
-
-
-        if (lastX != -1 && lastY != -1) {
-            const float dx = fx - lastX;
-            const float dy = fy - lastY;
-            const float distance = sqrt(dx * dx + dy * dy);
-
-            const float threshold = 0.008; // Threshold for the distance between points
-
-            if (distance > threshold) {
-                const int steps = (int)(distance * 250); // Number of intermediate points
-
-                for (int i = 0; i <= steps; i++) {
-                    const float t = (float)i / (float)steps;
-                    points[colour][pointCount[colour]][0] = lastX + t * dx;
-                    points[colour][pointCount[colour]][1] = lastY + t * dy;
-                    pointCount[colour]++;
-                    currentBlockPointCount++;
-                }
+            float **points = malloc(1 * sizeof(float *));
+            points[0] = malloc(2 * sizeof(float));
+            points[0][0] = (float)x / windowWidth;
+            points[0][1] = 1 - (float)y / windowHeight;
+            addBlock(colour, 1, (const float **)points, currentBlock);
+            if (currentBlock == NULL) {
+                currentBlock = headBlock;
             } else {
-                points[colour][pointCount[colour]][0] = fx;
-                points[colour][pointCount[colour]][1] = fy;
-                pointCount[colour]++;
-                currentBlockPointCount++;
+                currentBlock = currentBlock->nextBlock;
             }
+        } else {
+            currentBlock->pointCount++;
+            currentBlock->points = realloc(currentBlock->points, currentBlock->pointCount * sizeof(float *));
+            currentBlock->points[currentBlock->pointCount - 1] = malloc(2 * sizeof(float));
+            currentBlock->points[currentBlock->pointCount - 1][0] = (float)x / windowWidth;
+            currentBlock->points[currentBlock->pointCount - 1][1] = 1 - (float)y / windowHeight;
         }
-        if (currentBlockPointCount > 80){
-            addActionBlock(colour, currentBlockPointCount);
-        }
-        lastX = fx;
-        lastY = fy;
+    } else if (button == GLUT_LEFT_BUTTON && state == GLUT_UP) {
+        isDrawing = 0;
+    }
+    glutPostRedisplay();
+}
+
+void motion(int x, int y) {
+    if (isDrawing) {
+        currentBlock->pointCount++;
+        currentBlock->points = realloc(currentBlock->points, currentBlock->pointCount * sizeof(float *));
+        currentBlock->points[currentBlock->pointCount - 1] = malloc(2 * sizeof(float));
+        currentBlock->points[currentBlock->pointCount - 1][0] = (float)x / windowWidth;
+        currentBlock->points[currentBlock->pointCount - 1][1] = 1 - (float)y / windowHeight;
         glutPostRedisplay();
     }
 }
 
-
-void keyboard(const unsigned char key, const int x, const int y) {
-    if (key == 27) { // ASCII code for the ESC key
-        // free the memory for points
-        printf("freeing points array\n");
-        freePointsArray(points, 4, pointCount);
-
-        // clear all the points
-        for (int i = 0; i < 4; i++) {
-            pointCount[i] = 0;
-        }
-        blockCount = 0;
-        currentBlockPointCount = 0;
-
-        // Reinitialize the points array
-        const int pointCounts[4] = {40000, 40000, 40000, 40000};
-        initializePointsArray(4, pointCounts);
-
+void keyboard(unsigned char key, int x, int y) {
+    if (key == 27) { // ESC key
+        freeAllBlocks(headBlock);
+        headBlock = malloc(sizeof(struct block));
+        headBlock->nextBlock = NULL;
+        currentBlock = headBlock;
         glutPostRedisplay();
-    }
-    // make a new block no matter what if changing colour
-    else if (key == 119) {
+    } else if (key == 119) {
         colour = 0;
-        addActionBlock(colour, currentBlockPointCount);
-    }
-    else if (key == 114) {
+    } else if (key == 114) {
         colour = 1;
-        addActionBlock(colour, currentBlockPointCount);
-    }
-    else if (key == 103) {
+    } else if (key == 103) {
         colour = 2;
-        addActionBlock(colour, currentBlockPointCount);
-    }
-    else if (key == 98) {
+    } else if (key == 98) { // w, r, g, b
         colour = 3;
-        addActionBlock(colour, currentBlockPointCount);
-    }
-    // undo step using ctrl + z keys
-    else if (key == 26) {
-        if (blockCount > 0) {
-
-            pointCount[actionBlocks[blockCount].colour] -= actionBlocks[blockCount].pointCount;
-            blockCount--;
-            currentBlockPointCount = actionBlocks[blockCount].pointCount;
-
-            glutPostRedisplay();
-            Sleep(500); // Pause for 500 milliseconds to give the user time to release the key
+    } else if (key == 26) { // CTRL + Z
+        if (headBlock->nextBlock != NULL) {
+            removeMostRecentBlock(currentBlock);
         }
+        glutPostRedisplay();
+        Sleep(100);
     }
-
 }
 
-
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
 
@@ -203,19 +169,23 @@ int main(int argc, char** argv) {
     windowHeight = glutGet(GLUT_SCREEN_HEIGHT);
 
     glutInitWindowSize(windowWidth, windowHeight);
-    glutCreateWindow("CPaint");
-    glutDisplayFunc(display);
-    glutMouseFunc(mouse); // Register the mouse callback function
-    glutMotionFunc(motion); // Register the motion callback function
-    glutKeyboardFunc(keyboard); // Register the keyboard callback function
+    glutInitWindowPosition(0, 0);
+    glutCreateWindow("Cpaint");
 
-    int pointCounts[4] = {40000, 40000, 40000, 40000};
-    initializePointsArray(4, pointCounts);
+    glClearColor(0.0, 0.0, 0.0, 0.0);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluOrtho2D(0.0, 1.0, 0.0, 1.0);
+
+    headBlock = malloc(sizeof(struct block));
+    headBlock->nextBlock = NULL;
+    currentBlock = headBlock;
+
+    glutDisplayFunc(display);
+    glutMouseFunc(mouse);
+    glutMotionFunc(motion);
+    glutKeyboardFunc(keyboard);
 
     glutMainLoop();
-
-    // Free the points array before exiting
-    freePointsArray(points, 4, pointCounts);
     return 0;
 }
-

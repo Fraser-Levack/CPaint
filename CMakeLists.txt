@@ -10,7 +10,7 @@ set(GLUT_LIBRARY "C:/MinGW/lib/libfreeglut.a")
 include_directories(${GLUT_INCLUDE_DIR})
 link_directories("C:/path/to/external/mingw/lib")
 
-add_executable(CPaint main.c utils/array_utils.c)
+add_executable(CPaint utils/array_utils.c main.c)
 
 target_link_libraries(CPaint ${OPENGL_LIBRARIES} ${GLUT_LIBRARY})
 target_link_libraries(CPaint -lopengl32 -g -lfreeglut)
