@@ -41,7 +41,7 @@ float distance(const float *point1, const float *point2) {
 }
 
 // Function to interpolate between points
-float **interpolate(const float **points, const int numPoints, const float threshold, int *newNumPoints) {
+float **interpolate(float **points, const int numPoints, const float threshold, int *newNumPoints) {
 
     // Calculate the number of new points needed
     int count = 0;

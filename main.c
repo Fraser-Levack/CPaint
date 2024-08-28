@@ -24,7 +24,7 @@ struct block *currentBlock = NULL;
 
 float colours[5][3] = {{1.0, 1.0, 1.0}, {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}, {0.0, 0.0, 0.0}};
 
-void addBlock(const int colour, const int pointCount, const float **points, struct block *currentBlock) {
+void addBlock(const int colour, const int pointCount, float **points, struct block *currentBlock) {
     struct block *newBlock = malloc(sizeof(struct block));
     newBlock->colour = colour;
     newBlock->pointCount = pointCount;
@@ -119,7 +119,7 @@ void mouse(const int button,const int state,const int x,const int y) {
             points[0] = malloc(2 * sizeof(float));
             points[0][0] = (float)x / windowWidth;
             points[0][1] = 1 - (float)y / windowHeight;
-            addBlock(colour, 1, (const float **)points, currentBlock);
+            addBlock(colour, 1, points, currentBlock);
             if (currentBlock == NULL) {
                 currentBlock = headBlock;
             } else {
@@ -163,7 +163,7 @@ void motion(const int x,const int y) {
         currentBlock->points[currentBlock->pointCount - 1][1] = 1 - (float)y / windowHeight;
         // Interpolate points if needed
         int newNumPoints;
-        float **interpolatedPoints = interpolate((const float **)currentBlock->points, currentBlock->pointCount, 0.001, &newNumPoints);
+        float **interpolatedPoints = interpolate(currentBlock->points, currentBlock->pointCount, 0.001, &newNumPoints);
         free2DArray(currentBlock->points, currentBlock->pointCount);
         currentBlock->points = interpolatedPoints;
         currentBlock->pointCount = newNumPoints;
@@ -211,6 +211,7 @@ int main(int argc, char **argv) {
     glutInitWindowSize(windowWidth, windowHeight);
     glutInitWindowPosition(0, 0);
     glutCreateWindow("Cpaint");
+    printf("Starting Cpaint...\n");
 
     glClearColor(0.0, 0.0, 0.0, 0.0);
     glMatrixMode(GL_PROJECTION);
