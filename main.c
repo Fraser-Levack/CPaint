@@ -7,7 +7,10 @@
 int windowWidth;
 int windowHeight;
 int isDrawing = 0;
+int isErasing = 0;
 int colour = 0; // Initialize to a valid value
+int tempColour = 0; // to remember the previous colour
+float pointSize = 5.0;
 
 struct block {
     int colour;
@@ -19,7 +22,7 @@ struct block {
 struct block *headBlock = NULL;
 struct block *currentBlock = NULL;
 
-float colours[4][3] = {{1.0, 1.0, 1.0}, {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}};
+float colours[5][3] = {{1.0, 1.0, 1.0}, {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}, {0.0, 0.0, 0.0}};
 
 void addBlock(const int colour, const int pointCount, const float **points, struct block *currentBlock) {
     struct block *newBlock = malloc(sizeof(struct block));
@@ -81,13 +84,17 @@ void display() {
     const struct block *tempBlock = headBlock;
     while (tempBlock != NULL) {
         int blockColour = tempBlock->colour;
-        if (blockColour < 0 || blockColour > 3) {
+        if (blockColour < 0 || blockColour > 4) {
             blockColour = 0; // Default to white if out of bounds
         }
         glColor3f(colours[blockColour][0], colours[blockColour][1], colours[blockColour][2]);
         const int blockpointCount = tempBlock->pointCount;
-
-        glPointSize(5.0);
+        // make the points bigger if the colour is black
+        if (blockColour == 4) {
+            glPointSize(10.0);
+        } else {
+            glPointSize(5.0);
+        }
 
         glBegin(GL_POINTS);
         for (int i = 0; i < blockpointCount; i++) {
@@ -100,7 +107,12 @@ void display() {
 }
 
 void mouse(const int button,const int state,const int x,const int y) {
-    if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+    if ((button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) || (button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN)) {
+        if (button == GLUT_LEFT_BUTTON) {
+            colour = tempColour;
+        } else {
+            colour = 4; // Black
+        }
         if (isDrawing == 0) {
             isDrawing = 1;
             float **points = malloc(1 * sizeof(float *));
@@ -130,6 +142,8 @@ void mouse(const int button,const int state,const int x,const int y) {
 
     } else if (button == GLUT_LEFT_BUTTON && state == GLUT_UP) {
         isDrawing = 0;
+    } else if (button == GLUT_RIGHT_BUTTON && state == GLUT_UP) {
+        isDrawing = 0;
     }
     // Interpolate points if needed
     int newNumPoints;
@@ -158,13 +172,7 @@ void motion(const int x,const int y) {
 }
 
 void keyboard(const unsigned char key, int x, int y) {
-    if (key == 27) { // ESC key
-        freeAllBlocks(headBlock);
-        headBlock = malloc(sizeof(struct block));
-        headBlock->nextBlock = NULL;
-        currentBlock = headBlock;
-        glutPostRedisplay();
-    } else if (key == 119) {
+    if (key == 119) { // colour keys
         colour = 0;
     } else if (key == 114) {
         colour = 1;
@@ -172,13 +180,25 @@ void keyboard(const unsigned char key, int x, int y) {
         colour = 2;
     } else if (key == 98) { // w, r, g, b
         colour = 3;
-    } else if (key == 26) { // CTRL + Z
+    }
+
+    if (key == 27) { // ESC key
+        freeAllBlocks(headBlock);
+        headBlock = malloc(sizeof(struct block));
+        headBlock->nextBlock = NULL;
+        currentBlock = headBlock;
+        glutPostRedisplay();
+    } else if (key == 26) {
+    // CTRL + Z
         if (headBlock->nextBlock != NULL) {
             removeMostRecentBlock(currentBlock);
         }
         glutPostRedisplay();
         Sleep(100);
+    } else {
+        tempColour = colour;
     }
+
 }
 
 int main(int argc, char **argv) {
@@ -208,7 +228,5 @@ int main(int argc, char **argv) {
 
     glutMainLoop();
 
-    // free all blocks
-    freeAllBlocks(headBlock);
     return 0;
 }
