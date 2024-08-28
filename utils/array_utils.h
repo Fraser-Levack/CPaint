@@ -9,5 +9,7 @@
 void free2DArray(float **array, int rows);
 void free3DArray(float ***array, int rows, int cols);
 void freePointsArray(float ***points, int numColors, const int *pointCounts);
+float distance(const float *point1, const float *point2);
+float **interpolate(const float **points, int numPoints, float threshold, int *newNumPoints);
 
 #endif //ARRAY_UTILS_H

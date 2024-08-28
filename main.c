@@ -78,7 +78,7 @@ void freeAllBlocks(struct block *headBlock) {
 void display() {
     glClear(GL_COLOR_BUFFER_BIT);
 
-    struct block *tempBlock = headBlock;
+    const struct block *tempBlock = headBlock;
     while (tempBlock != NULL) {
         int blockColour = tempBlock->colour;
         if (blockColour < 0 || blockColour > 3) {
@@ -99,7 +99,7 @@ void display() {
     glFlush();
 }
 
-void mouse(int button, int state, int x, int y) {
+void mouse(const int button,const int state,const int x,const int y) {
     if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
         if (isDrawing == 0) {
             isDrawing = 1;
@@ -120,24 +120,44 @@ void mouse(int button, int state, int x, int y) {
             currentBlock->points[currentBlock->pointCount - 1][0] = (float)x / windowWidth;
             currentBlock->points[currentBlock->pointCount - 1][1] = 1 - (float)y / windowHeight;
         }
+        // Interpolate points if needed
+        int newNumPoints;
+        float **interpolatedPoints = interpolate(currentBlock->points, currentBlock->pointCount, 0.005, &newNumPoints);
+
+        free2DArray(currentBlock->points, currentBlock->pointCount);
+        currentBlock->points = interpolatedPoints;
+        currentBlock->pointCount = newNumPoints;
+
     } else if (button == GLUT_LEFT_BUTTON && state == GLUT_UP) {
         isDrawing = 0;
     }
+    // Interpolate points if needed
+    int newNumPoints;
+    float **interpolatedPoints = interpolate(currentBlock->points, currentBlock->pointCount, 0.001, &newNumPoints);
+    free2DArray(currentBlock->points, currentBlock->pointCount);
+    currentBlock->points = interpolatedPoints;
+    currentBlock->pointCount = newNumPoints;
     glutPostRedisplay();
 }
 
-void motion(int x, int y) {
+void motion(const int x,const int y) {
     if (isDrawing) {
         currentBlock->pointCount++;
         currentBlock->points = realloc(currentBlock->points, currentBlock->pointCount * sizeof(float *));
         currentBlock->points[currentBlock->pointCount - 1] = malloc(2 * sizeof(float));
         currentBlock->points[currentBlock->pointCount - 1][0] = (float)x / windowWidth;
         currentBlock->points[currentBlock->pointCount - 1][1] = 1 - (float)y / windowHeight;
+        // Interpolate points if needed
+        int newNumPoints;
+        float **interpolatedPoints = interpolate((const float **)currentBlock->points, currentBlock->pointCount, 0.001, &newNumPoints);
+        free2DArray(currentBlock->points, currentBlock->pointCount);
+        currentBlock->points = interpolatedPoints;
+        currentBlock->pointCount = newNumPoints;
         glutPostRedisplay();
     }
 }
 
-void keyboard(unsigned char key, int x, int y) {
+void keyboard(const unsigned char key, int x, int y) {
     if (key == 27) { // ESC key
         freeAllBlocks(headBlock);
         headBlock = malloc(sizeof(struct block));
@@ -187,5 +207,8 @@ int main(int argc, char **argv) {
     glutKeyboardFunc(keyboard);
 
     glutMainLoop();
+
+    // free all blocks
+    freeAllBlocks(headBlock);
     return 0;
 }
